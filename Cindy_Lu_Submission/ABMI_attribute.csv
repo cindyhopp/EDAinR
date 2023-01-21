@@ -1,0 +1,21 @@
+﻿Attribute,Attribute Definition,Value Type,Code,Format,Range,Unit,Missing Values
+Rotation,Reference describing when data was collected at a broad level,Text,Rotation 1 = 2007 onward | Rotation 2 = 2015 onward,,,,
+ABMI Site,"Reference number given to each ABMI data collection site. An alphabetized suffix distinguishes a new site from the old site(s).
+Off grid data collection sites are appended with an OGW-ABMI prefix and a 1- or 2-digit suffix.",Text,,"1-4 digits & 1 letter (if necessary); OGW & 4-letter prefix, 1-4
+digits, and 1-2 digit suffix",,,
+Year,Collection year.,Date,,YYYY,,,
+Field Date,"Day, month, and year data was collected.",Date,,DD-Mon-YY,,,DNC = Did Not Collect | VNA = Variable Not Applicable
+Field Crew Member(s),Initials for the field technicians collecting the field data.,Text,,"2 or 3 letters (UPPERCASE) and 1 number (if necessary); 1
+set of initials or a combination of many",,,DNC = Did Not Collect | VNA = Variable Not Applicable
+Location,"Water physiochemistry measurements (e.g. temperature, pH, dissolved oxygen, conductivity and salinity) are measured at three locations in each wetland. The first measurements are taken at the deepest point (Position 1) of the wetland as determined by the bathymetric map; the remaining two locations (Position 2 and Position 3), spaced 25 metres apart, are located toward the centre of the wetland.",Code,Position 1 = Deepest Point | Position 2 | Position 3,t,,,
+Time,Time of day when water chemistry was collected,Date,,HH:MM,,,DNC = Did Not Collect | PNA = Protocol Not Applicable
+Depth (metres),Depth of the water (in metres) as measured at three locations in the wetland.,Number,,,,metre,DNC = Did Not Collect
+Temperature (Degrees Celsius),Temperature of the water (degrees Celsius) as measured at three locations in the wetland.,Number,,,,Celsius,DNC = Did Not Collect
+pH,pH of the water as measured at three locations in the wetland.,Number,,,0-14,pH,DNC = Did Not Collect | VNA = Variable Not Applicable
+Dissolved Oxygen (milligrams/Litre),Dissolved oxygen content of the water as measured at three locations in the wetland.,Number,,,,milligramsPerLitre,DNC = Did Not Collect
+Conductivity (mSiemens/cm),Electrical conductivity (milliSiemens per centimetre) of the water as measured at three locations in the wetland.,Number,,,,milliSiemensPerCentimetre,DNC = Did Not Collect | VNA = Variable Not Applicable
+Salinity (parts per thousand),Water salinity (parts per thousand) as measured at three locations in the wetland.,Number,,,,partsperthousand,DNC = Did Not Collect
+Total Nitrogen (micrograms/Litre),Total content of nitrogen (micrograms per litre) in the water as measured at three locations in the wetland.,Number,,,,microgramsPerLitre,DNC = Did Not Collect | VNA = Variable Not Applicable
+Total Phosphorous (micrograms/Litre),Total content of phosphorous (micrograms per litre) in the water as measured at three locations in the wetland.,Number,,,,microgramsPerLitre,DNC = Did Not Collect | VNA = Variable Not Applicable
+Dissolved Organic Carbon (milligrams/Litre),Total content of dissolved organic carbon (milligrams per litre) in the water as measured at three locations in the wetland.,Number,,,,milligramsPerLitre,DNC = Did Not Collect | VNA = Variable Not Applicable
+Turbidity,"Measurement for water cloudiness. The higher the turbidity, the cloudier it is. Value is an average of two measurements using the turbidity tube method. The averaged value is  onverted into nephelometric turbidity units (NTU).",Number,,,,NTU,DNC = Did Not Collect | PNA = Protocol Not Applicable

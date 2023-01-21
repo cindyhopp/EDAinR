@@ -1,0 +1,426 @@
+---
+title: "GDAA 1001 Fundamentals of Spatial Data Analytics"
+subtitle: "Assignment 2 - Exploratory Data Analysis"
+author: "Cindy Lu"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    df_print: paged
+    theme: cerulean
+---
+
+```{css, echo=FALSE}
+h1.title {
+  text-align: center;
+  font-size: 26px
+}
+h1 {
+  text-align: center;
+  font-size: 24px
+}
+h2 {font-size: 22px}
+h3.subtitle {
+  text-align: center;
+  font-size: 20px
+}
+h3 {
+  font-size: 18px
+}
+h4.author {
+  text-align: center;
+  font-size: 16px
+}
+h4.date {
+  text-align: center;
+  font-size: 16px
+}
+h4 {font-size: 16px}
+body {font-size: 14px}
+```
+
+#### R Package Required:
+```{r class.source = 'fold-show', message = F, warning=F}
+# Import packages
+library(tidyverse)
+library(GGally)
+library(gridExtra)
+library(corrgram)
+library(plotly)
+library(knitr)
+library(ggridges)
+```
+
+# Introduction
+
+>"If there is magic on this planet, it is contained in water." \n --- Loren Eiseley, anthropologist, educator, philosopher, and natural science writer.
+
+In this assignment, we attempt to unfold the magic of water in wetlands, an important ecosystem that supports numerous ecofunctions such as biodiversity. We will explore the relationships between several physiochemical properties of water: 
+
+Is there a strong correlation between temperature and other water properties? What are some general trends of the properties from year to year? Can pH level be used to generalize the properties of a water body?
+
+Utilizing Alberta Biodiversity Monitoring Institute's Wetland Habitat Water Physiochemistry dataset, we carry out a series of data wrangling and exploratory data analysis to examine and visualize relationships among variables.
+
+Understanding the relationships of these water properties is a stepping stone that will aid further evaluation and protection of healthy wetlands. 
+
+---
+
+# Data Selection and Preparation
+
+## About the Data
+The Raw Water Physiochemistry dataset (ABMI dataset) was requested and downloaded from Alberta Biodiversity Monitoring Institute (ABMI). The data were recorded by ABMI's field crew to document the water physiochemistry measurements in pre-determined wetland sites across Alberta from 2007 to 2019. Data were collected in compliance with ABMI's Wetland Field Data Collection Protocols (ABMI 2019), attributes in the dataset are summarized in Table 1 below.
+
+### Table 1 - Attribute description of Wetland W04 Water Physiochemistry Raw Data
+```{r message = F, warning=F}
+attribute <- read_csv('ABMI_attribute.csv',show_col_types = FALSE)
+select(attribute, c(1:3))
+```
+
+## Data Preparation and Understanding the Data
+
+``````{r message = F, warning=F, class.source = 'fold-show'}
+# Import data
+abmi <- read_csv('A_W04_Water_Physiochemistry_3970548287569838812.csv')
+```
+
+### Table 2 - The first 6 rows of the ABMI dataset
+```{r message = F, warning=F}
+head(abmi)
+```
+There are a total of 5244 records of 17 variables. 
+
+#### Data preparation
+Our next steps are to remove redundant fields that are irrelevant, including:
+
+- `Field Date` - sample dates were already standardized to take place between June 15 and July 31 (ABMI 2019);
+
+- `Time` - sample times were standardized to take place between 1-2pm (ABMI 2019);
+
+- `Turbidity` - the value was not recorded until 2017 (ABMI 2019), which is more than half of the records;
+
+According to ABMI 2019, the survey records were taken from the middle of the water column if the water is <2 m deep, and at 1 m depth if the water is >2 m deep, and the nutrient sample were mixed from all 3 locations, i.e. same recording for all 3 locations within the same wetland site. Therefore the `Location` does not contribute much to the variation of recorded value and it can be omitted from the dataset. A better approach would be to consolidate the mean values and compare among wetland sites instead of the 3 locations within each wetland site (this is completed in the next section). 
+
+In addition, column names are abbreviated in preparation for easier reference in later steps.
+
+```{r message = F, warning=F}
+# subset data
+abmi_tidy <- abmi[,-c(4,6,7,17)]
+
+# rename column names
+abmi_tidy <- abmi_tidy %>% 
+  rename("Field_Crew" = "Field Crew Member(s)",
+         "Depth" = "Depth (metres)",
+         "Temp" = "Temperature (Degrees Celsius)",
+         "DO" = "Dissolved Oxygen (milligrams/Litre)",
+         "Cond" = "Conductivity (mSiemens/cm)",
+         "Salinity" = "Salinity (parts per thousand)",
+         "Total_N" = "Total Nitrogen (micrograms/Litre)", 
+         "Total_P" = "Total Phosphorous (micrograms/Litre)",
+         "DOC" = "Dissolved Organic Carbon (milligrams/Litre)")
+
+# show structure of the dataset
+str(abmi_tidy)
+```
+
+Note the data types for the physiochemical properties of water are shown as characters. They need to be converted to numeric data types.
+
+```{r message = F, warning=F}
+abmi_tidy <- abmi_tidy %>% 
+  mutate_at(c(5:13), as.numeric)
+```
+
+#### Group the data by site records and convert the dataset to a tibble
+As mentioned earlier, our next step is to group the observations by wetland site per visit (i.e. condense 3 records to 1 if the site was visited once; if the site was visited twice in both rotations, then there should be 2 separate records, 1 for each visit), using the mean value of physiochemical properties for each location within the wetland site.  
+
+```{r message = F, warning=F}
+abmi_site <- summarise(
+  group_by(abmi_tidy, Rotation, `ABMI Site`, `Field_Crew`),
+  Year = mean(Year),
+  Depth_m = mean(Depth),
+  Temp_m = mean(Temp),
+  pH_m = mean(pH),
+  DO_m = mean(DO),
+  Cond_m = mean(Cond),
+  Salinity_m = mean(Salinity),
+  Total_N_m = mean(Total_N),
+  Total_P_m = mean(Total_P),
+  DOC_m = mean(DOC)
+)
+
+abmi_site <- as_tibble(abmi_site)
+```
+
+### Table 3 - Data summary of ABMI dataset after grouping the data by site visit
+```{r message = F, warning=F}
+knitr::kable(summary(abmi_site))
+```
+
+Note 177 null values in `Conductivity`, that's 10% of the total records. 
+Upon examination, we see that most null values were in 2012 survey, so we can either eliminate all records with a null `Conductivity` value, or eliminate just the `Conductivity` column. Since the values are valid in most of other columns and it is in our interest to explore the relationships of general water properties, it is best to forego the `Conductivity` column in this case to maintain data integrity.
+
+Other records with random null values are then omitted from further analysis. `Rotation`, `Year`, and `Field_Crew` variables are converted from character data types to factors.
+
+```{r class.source = 'fold-show'}
+# Remove missing values
+abmi_new <- abmi_site[,-9]
+abmi_new <- na.omit(abmi_new)
+
+# Convert corresponding variables to factors
+abmi_new <- abmi_new %>%
+  mutate_at(c(1,3:4), as.factor)
+```
+
+Note that there are 99 combinations for Field Crew Members, as ABMI recruits new crews every year to collect data. This factor may not reveal any relationships to the whole dataset, however it may be helpful to evaluate any relationships within a given year where the crew is more consistent and evaluate protocol compliance by the crews. Hence we will leave the column in for now.
+
+---
+
+# Data Summary
+
+1695 records with 12 variables, including 1 character variable for ABMI Site ID, 3 categorical variables for `Rotation`(survey periods), `Field_Crew`, `Year` and 8 numeric variables for physiochemical properties of sampled water.
+
+### Table 4 - Variables and data types in ABMI dataset
+```{r message = F, warning=F}
+data.frame(Variable = names(abmi_new),
+           Type = sapply(abmi_new, typeof),
+           row.names = NULL) %>% kable()
+```
+
+### Table 5 - Data summary of ABMI dataset after clean-up
+```{r message = F, warning=F}
+knitr::kable(summary(abmi_new))
+```
+
+---
+
+# Exploration of Variation
+
+## Categorical Variables
+
+### Figure 1 - Stacked bar chart by `Year` and `Field Crew`
+```{r message = F, warning=F}
+Year_plot <- ggplot(abmi_new, aes(x=Year, fill=Field_Crew))+
+  geom_bar(position="stack")+
+  ylab ("Count by Field Crew")+
+  theme(legend.position = "none")
+ggplotly(Year_plot)
+```
+This interactive bar chart shows the number of records obtained by each field crew for each year. It is evident that the number of recordings are not consistent from year to year, with lower number in earlier years (2007-2010). Various factors including funding, workforce size, extreme weather can affect the number of recordings. This should be noted when performing further analysis and examining year-based patterns.
+
+---
+
+## Numerical Variables
+
+### Figure 2 - Combination boxplots for Temperature and pH values
+```{r message = F, warning=F}
+Temp_box <- ggplot(abmi_new, aes(x=Temp_m))+
+  geom_boxplot()+
+  xlab("Temperature °C")+
+  theme(legend.position = "none",
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+pH_box <- ggplot(abmi_new, aes(x=pH_m))+
+  geom_boxplot()+
+  xlab("pH")+
+  theme(legend.position = "none",
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+grid.arrange(Temp_box, pH_box, nrow=1)
+```
+
+The `Temperature` boxplot shows quite a wide range of temperature recordings, from around 5°C to almost 30°C. Majority of the recordings sit between 18°C and 22°C.
+
+The `pH` boxplot shows that all recordings were between 3 and 12, which is within the pH range of 0-14. In a nutshell, most water appear to be slightly basic with pH level over 7.
+
+
+### Figure 3 - Combination density plots for depth, dissolved oxygen, and salinity
+```{r message = F, warning=F}
+Depth_plot <- ggplot(abmi_new,aes(x=Depth_m))+
+  geom_density(fill='#69b3a2', color='#e9ecef')+
+  xlab("Wetland Depth (m)")+
+  ylab("Density")
+
+DO_plot <- ggplot(abmi_new,aes(x=DO_m))+
+  geom_density(fill='coral1', color='coral2', alpha=0.8)+
+    xlab("Dissolved Oxygen(mg/L)")+
+    ylab("Density")
+
+Salinity_plot <- ggplot(abmi_new, aes(x=Salinity_m))+
+  geom_density(fill='cornflowerblue', color='cornflowerblue', alpha=0.8)+
+    xlab("Salinity (ppt)")+
+    ylab("Density")
+
+grid.arrange(Depth_plot, DO_plot, Salinity_plot, nrow=1)
+```
+
+The density plots shown above provide a visualized distribution of the three variables. Most wetlands are under 10m deep and salinity less than 5 parts per thousand. There is a wider range of dissolved oxygen values.
+
+
+### Figure 4A - Combination histogram for nutrient content
+```{r message = F, warning=F}
+N_plot <- ggplot(abmi_new, aes(x=Total_N_m))+
+  geom_histogram(bins = 50, col = "white", fill = "turquoise")+
+  xlab("Total Nitrogen (µg/L)")+
+  ylab("Count")
+
+P_plot <- ggplot(abmi_new, aes(x=Total_P_m))+
+  geom_histogram(bins = 50, col = "white", fill = "purple")+
+  xlab("Total Phosphorous (µg/L)")+
+  ylab("Count")
+
+DOC_plot <- ggplot(abmi_new,aes(x=DOC_m))+
+  geom_histogram(bins = 50, col = "white", fill = "coral")+
+  xlab("Dissolved Organic Carbon (mg/L)")+
+  ylab("Count")
+
+grid.arrange(N_plot, P_plot, DOC_plot, nrow=1)
+```
+
+From the histogram plots, note the positively skewed distribution occurs in all 3 nutrient properties. The values for Total Nitrogen are extremely skewed with the maximum value to be over 10,000 times than the minimum value. Upon more read-up on the wetland survey methods, we found out the applicable range for Total Nitrogen is 0.05-10.0 mg/L (EPA Method 353.2).
+
+Similar instances occur in the Total Phosphorous values, where applicable concentration range	for the method used is 0.01 to 6 mg/L (Standard Method 4500-P Phosphorous). 
+
+Any values recorded outside the range specified in the Methods are subject to errors and may affect further data analysis. Therefore, we will remove these values, and re-evaluate their distribution. The range for dissolved organic carbon has not been validated so we will not filter out any `DOC` values.
+
+### Figure 4B - Combination histogram for Total Nitrogen and Total Phosphorous values post filter
+```{r message = F, warning=F}
+# Filter out invalid data
+abmi_filter <- abmi_new %>% 
+  filter(Total_P_m <= 6000) %>% 
+  filter(Total_N_m <= 10000)
+
+N_plot <- ggplot(abmi_filter, aes(x=Total_N_m))+
+  geom_histogram(bins = 50, col = "white", fill = "turquoise")+
+  xlab("Total Nitrogen (µg/L)")+
+  ylab("Count")
+
+P_plot <- ggplot(abmi_filter, aes(x=Total_P_m))+
+  geom_histogram(bins = 50, col = "white", fill = "purple")+
+  xlab("Total Phosphorous (µg/L)")+
+  ylab("Count")
+
+grid.arrange(N_plot, P_plot, nrow=1)
+```
+
+---
+
+# Exploration of Co-variation
+
+## Correlogram
+### Figure 5 - Correlogram of all numeric variables
+```{r message = F, warning=F}
+corrgram(abmi_filter, lower.panel=panel.shade, upper.panel = panel.pts)
+```
+
+The correlogram is a great starting point to investigate any relationships between the water physiochemical properties. In the graph shown above, blue boxes in the lower graphs indicate positive correlation while the red boxes indicate negative correlation. The darker the blue or red, the higher level of correlation. In this dataset, the most positive correlation exists between `Total_N` and `Total_P`, as well as between `Total_N` and `DOC`, while the most negative correlation lies between `Depth` and `Total_N`.
+
+We can then investigate the relationship between `Total_N` and `Total_P` with more details.
+
+### Figure 6 - Heatmap of total Nitrogen and total Phosphorous content
+```{r message = F, warning=F}
+ggplotly(abmi_filter %>% 
+  ggplot(aes(x=Total_N_m, Total_P_m))+
+  geom_hex(alpha=0.8)+
+  scale_fill_gradient(low = "cadetblue", high = "darkslategrey")+
+  geom_smooth(method = 'lm', color = "cyan")+
+  geom_rug(col="steelblue", alpha=0.1)+
+  xlab("Total Nitrogen (µg/L)")+
+  ylab("Total Phosphorous (µg/L)"))
+```
+
+Note the majority of records are distributed in the lower left corner of the graph, with a seemingly positive correlation between the two variables.
+
+---
+
+## Grouped Scatter Plot Matrix
+### Figure 7 - Scatter plot matrix of all numeric variables grouped by pH
+
+```{r message = F, warning=F}
+abmi_filter %>% 
+  select(c(5:12)) %>%
+  mutate(pH = ifelse(pH_m < 7, "acidic", 
+                     (ifelse(pH_m >= 7 & pH_m <9, "slightly basic", "basic")))) %>% 
+  ggpairs(mapping = ggplot2::aes(color = pH, alpha = 0.2),
+          lower = list(continuous = wrap("points", alpha = 0.2, size = 0.1), combo=wrap("dot_no_facet", alpha=0.3, size = 0.1)),
+          upper = NULL)+
+  theme(axis.line = element_blank(), axis.text = element_blank(), 
+        axis.ticks = element_blank())
+```
+
+Although the correlations between pH values and other water properties were not obvious, we can further categorize `pH` and examine if any patterns exist between levels of acidity. Since there weren't many pH records of less than 7, all records of less than 7 were categorized as acidic, those equal to or greater than 7 but less than 9 as slightly basic, and those greater than and equal to 9 as basic.
+
+It is interesting to note the distribution of `Total_N` in relation to acidity, where acidic water tend to have lower Nitrogen value.
+
+---
+
+## Yearly Variation
+### Figure 8 - Temperature variation across year
+```{r message = F, warning=F}
+ggplotly(abmi_filter %>% 
+  ggplot(aes(x=Year, y = Temp_m))+
+  geom_boxplot(fill="slateblue", alpha=0.2)+
+  stat_summary(fun=mean, geom="point", shape=15, size=3,
+               color='darkcyan')+
+  ylab("Temperature°C"))
+```
+
+### Figure 9 - Total nitrogen variation across year
+```{r Message=F, Warning=F}
+ggplotly(abmi_filter %>% 
+  ggplot(aes(x=Year, y = Total_N_m))+
+  geom_boxplot(fill="slateblue", alpha=0.2)+
+  stat_summary(fun=mean, geom="point", shape=15, size=3,
+               color='coral')+
+  ylab("Total Nitrogen (µg/L)"))
+```
+
+Based on the results from Figure 8 and 9, the temperature and total nitrogen varies from year to year and there is no visible linear trend from 2007 to 2019. It will be interesting to see if there is any relationship to average air temperature in July. However it should be noted that the survey sites span across the whole Province of Alberta, with large temperature variation among sites. 
+
+---
+
+## Data Collection Standardization
+### Figure 9 - Ridgeline plot of dissolved oxygen variation across field crews
+```{r message = F, warning=F}
+abmi_filter %>% 
+  filter(Year == 2016) %>% 
+  select(Field_Crew, DO_m) %>% 
+  ggplot(aes(x=DO_m, y=Field_Crew, fill=Field_Crew))+
+  geom_density_ridges(stat="density_ridges")+
+  theme_ridges()+
+  theme(legend.position = "none")+
+  theme(panel.spacing = unit(0.1, "lines"),
+        strip.text.x = element_text(size = 8))+
+  xlab("Dissolved Oxygen (mg/L)")+
+  ylab("Field Crew")
+```
+
+We can examine the distribution of variable values grouped by each field crew to determine potential operational discrepancies among field crews. Here we selected dissolved oxygen variable collected in 2016. According to the ridgeline plot, there is no field crew that significantly contribute to data skewing, although it seems that crew "KLE" tend to record lower `DO` values when compared with other field crews in 2016. 
+
+---
+
+# Discussion
+Exploratory data analysis of the ABMI Wetland Physiochemistry dataset allows us to better understand the data through visualization, and to explore patterns and relationships within and between variables. By plotting the variables, it was easy to spot the outliers and identify needs to further investigate the data. Plotting the variables also provide a better sense of data distribution as well as preliminary correlations between variables that helps us understand the data. 
+
+Most numeric variables are distributed positively skewed, in part due to a pre-conditioned lower limit of 0 while with no restriction on the maximum value. It is worth investigating such pattern and determine if there is any potential for inaccurate data input. 
+ 
+The strongest relationships exist between total nitrogen and 3 variables - total phosphorous, dissolved organic carbon, and depth. In contrary to anticipation, there is no strong correlation between temperature and other water properties, and no significant indication that pH can be used to generalize physiochemical properties of a water body. We examined temperature and total nitrogen variations across 2007 to 2019 and did not find any visible trends. 
+
+Based on the exploratory data analysis results, it seems that the magic of water is far more complex than what our variables in the dataset can explain. However, total nitrogen variable proved to be the most sensitive to changes from other variables, and its relationship to other organic nutrient characteristics such as total phosphorous values and dissolved organic carbon should be examined further. 
+
+---
+
+# Acknowledgement & Reference
+Raw water physiochemistry data (2007-2019 inclusive) from the Alberta Biodiversity Monitoring Institute was used, in whole or part, to complete this assignment. More information on the Institute can be found at: <http://www.abmi.ca>
+
+## Reference
+- Alberta Biodiversity Monitoring Institute (ABMI), 2016, Wetland Field Data Collection Protocols(Abridged Version) 2019-07-02. Alberta Biodiversity Monitoring Institute, Alberta, Canada. Retrieved November 7, 2022, from:
+<https://www.abmi.ca/home/data-analytics/da-top/da-product-overview/Species-Habitat-Data.html>
+
+- Alberta Biodiversity Monitoring Institute (ABMI), n.d., Wetland Survey Methods. Alberta Biodiversity Monitoring Institute, Alberta, Canada. Report available as part of data packaged downloaded on November 7, 2022
+
+- United States Environmental Protection Agency(EPA), 1993, Method 353.2, Revision 2.0: Determination of Nitrate-Nitrite Nitrogen by Automated Colorimetry. Retrieved November 10, 2022, from <https://www.epa.gov/sites/default/files/2015-08/documents/method_353-2_1993.pdf>
+
+- Standard methods: 4500-P E:&nbsp; phosphorus by ascorbic acid. NEMI Method Summary - 4500-P E. n.d., Retrieved November 10, 2022, from <https://www.nemi.gov/methods/method_summary/7436/#:~:text=4500%2DP%20B.,Ascorbic%20Acid%20Method&amp;text=This%20method%20is%20most%20suited%20for%20measuring%20phosphorus%20in%20water.&amp;text=Arsenates%20react%20with%20the%20molybdate,interfere%20with%20the%20phosphate%20determination>
