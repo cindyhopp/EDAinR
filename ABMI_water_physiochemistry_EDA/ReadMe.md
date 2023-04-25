@@ -1,4 +1,4 @@
-Utilizing Alberta Biodiversity Monitoring Institute’s Wetland Habitat Water Physiochemistry dataset, a series of data wrangling and exploratory data analysis was conducted to examine and visualize relationships among different physiochemical properties of water samples.
+Utilizing Alberta Biodiversity Monitoring Institute’s Wetland Habitat Water Physiochemistry dataset, a series of data wrangling and exploratory data analysis was conducted in R to examine and visualize relationships among different physiochemical properties of water samples.
 
 Understanding the relationships of these water properties is a stepping stone that will aid further evaluation and protection of healthy wetlands.
 
